@@ -88,5 +88,50 @@ async def chat(ctx, *, prompt):
     except Exception as e:
         await ctx.send(f"Error: {e}")
 
+
+import random
+
+@bot.command()
+async def tictactoe(ctx, player2: discord.Member):
+    board = [' '] * 9
+    turn = 'X'
+    game_over = False
+
+    def print_board():
+        return f"{board[0]}|{board[1]}|{board[2]}\n{board[3]}|{board[4]}|{board[5]}\n{board[6]}|{board[7]}|{board[8]}"
+
+    await ctx.send(f"Tic-Tac-Toe game started between {ctx.author.mention} and {player2.mention}.\n{print_board()}")
+
+    while not game_over:
+        def check_winner():
+            wins = [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6)]
+            for win in wins:
+                if board[win[0]] == board[win[1]] == board[win[2]] and board[win[0]] != ' ':
+                    return board[win[0]]
+            if ' ' not in board:
+                return 'Draw'
+            return None
+
+        def check_input(msg):
+            return msg.author in [ctx.author, player2] and msg.content.isdigit() and int(msg.content) in range(9) and board[int(msg.content)] == ' '
+
+        await ctx.send(f"{turn}'s turn. Enter a number (0-8):")
+        try:
+            move = await bot.wait_for('message', check=check_input, timeout=60.0)
+            board[int(move.content)] = turn
+            winner = check_winner()
+            if winner:
+                game_over = True
+                if winner == 'Draw':
+                    await ctx.send("It's a draw!\n" + print_board())
+                else:
+                    await ctx.send(f"{winner} wins!\n" + print_board())
+            else:
+                turn = 'O' if turn == 'X' else 'X'
+                await ctx.send(print_board())
+        except TimeoutError:
+            await ctx.send("Game over due to inactivity.")
+            game_over = True
+
 # Exécuter le bot avec le jeton d'authentification
 bot.run(TOKEN)
