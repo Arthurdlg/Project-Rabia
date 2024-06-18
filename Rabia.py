@@ -8,64 +8,93 @@ TOKEN = 'MTI0NzE5NzI4NTI0MzE1ODUzOQ.G2B-N9.QkeWv2V4VE3nORpnIHjaOsZs0uGi3wHvyf-q4
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='$', intents=intents)
 
+# A global variable to keep track of whether an action should be stopped
+stop_action = False
 
-# Définir le message de confirmation lorsque le bot est prêt
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
 
+# Command to stop the ongoing action
+@bot.command()
+async def stop(ctx):
+    global stop_action
+    stop_action = True
+    await ctx.send("Stopping the current action...")
 
-@bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
+@bot.command(help="Search for a keyword in the last 100 messages and create a thread displaying results.")
+async def search_keyword(ctx, *, keyword: str):
+    """
+    Search for a keyword in the last 100 messages and create a thread displaying results.
 
-    if message.content.startswith('$hello'):
-        await message.channel.send('NOOO!')
+    Parameters:
+    keyword: The word to search for in the messages(Word).
+    """
+    thread = await ctx.channel.create_thread(name=f"Results for '{keyword}'", type=discord.ChannelType.public_thread)
+    await message.channel.send('Let me do it...')
+    async for message in ctx.channel.history(limit=100):
+        if stop_action:
+            break
+        if keyword in message.content:
+            await thread.send(f"Found message: {message.content} (Link: {message.jump_url})")
+    if stop_action:
+        await ctx.send("The search was stopped.")
+    else:
+        await ctx.send(f"Search for '{keyword}' completed. Check the thread for results.")
 
-    if message.content.startswith('$chat_'):
-        await message.channel.send('po!')
+# Command to search by theme and create a thread displaying results
+@bot.command(help="Search for a theme in the last 100 messages and create a thread displaying results.")
+async def search_theme(ctx, *, theme: str):
+    """
+    Search for a theme in the last 100 messages and create a thread displaying results.
 
-    if message.content.startswith('$chat-rabia'):
-        prompt = message.content[len('$chat-rabia '):]
-        await message.channel.send('Let me think about it...')
-        print(f"Received prompt: {prompt}")  # Debugging line
+    Parameters:
+    theme: The theme to search for in the messages (Word).
+    """
+    await ctx.send('Let me do it... (This may take a while)')
+    
+    thread = await ctx.channel.create_thread(name=f"Results for theme '{theme}'", type=discord.ChannelType.public_thread)
+
+    # Skip the last two messages
+    messages = []
+    async for message in ctx.channel.history(limit=102):
+        if stop_action:
+            break
+        messages.append(message)
+    messages = messages[:-2]  # Exclude the last two messages
+
+    for message in messages:
+        if stop_action:
+            break
+        if message.content.startswith(ctx.prefix + ctx.invoked_with):
+            continue
+        prompt = f"Answer only with word 'yes' or 'no'. Does this message talk about {theme}?\n\nMessage: {message.content}."
         try:
             response = client_conn.get_chat_response(prompt)
-            print(f"Received response: {response}")  # Debugging line
-            
-            await message.channel.send(response)
+            if "yes" in response.lower():
+                await thread.send(f"Found message: {message.content} (Link: {message.jump_url})")
         except Exception as e:
-            await message.channel.send(f"Error: {e}")
-
-    if message.content.startswith('$history'):
-        await message.channel.send('po!')
-
-    await bot.process_commands(message)  # Process commands
-
-
-@bot.command()
-async def get_message_id(ctx, *, search_text: str):
-    try:
-        # Fetch messages in the channel history
-        async for message in ctx.channel.history(limit=100): # To get  history of 100 messages
-            if search_text in message.content:
-                await ctx.send(f"Message ID for '{search_text}': {message.id}")
-                return
-        await ctx.send(f"No message found containing: {search_text}")
-    except Exception as e:
-        await ctx.send(f"Error: {e}")
-
-
+            await ctx.send(f"Error: {e}")
+            return
+    if stop_action:
+        await ctx.send("The search was stopped.")
+    else:
+        await ctx.send(f"Search for theme '{theme}' completed. Check the thread for results.")
 
 @bot.command()
 async def hello(ctx):
     await ctx.send('NOOO!')
 
 # Commande pour purger les messages
-@bot.command()
+@bot.command(help="Delete a specified number of messages in the channel.")
 @commands.has_permissions(manage_messages=True)
 async def purge(ctx, limit: int = None):
+    """
+    Delete a specified number of messages in the channel.
+
+    Parameters:
+    limit: The number of messages to delete (Number).
+    """
     if limit is None:
         await ctx.send(
             "Syntax Error: You must specify the number of messages to purge. Usage: !purge <number>"
@@ -78,9 +107,16 @@ async def purge(ctx, limit: int = None):
         )  # Le message de réponse sera supprimé après 5 secondes
 
 
-@bot.command()
+@bot.command(help="Get a response from the model for the given prompt.")
 async def chat(ctx, *, prompt):
+    """
+    Get a response from the model for the given prompt.
+
+    Parameters:
+    prompt: The prompt to get a response for (Text).
+    """
     print(f"Received prompt: {prompt}")  # Debugging line
+    await ctx.send('Let me do it...')
     try:
         response = client_conn.get_chat_response(prompt)
         print(f"Received response: {response}")
@@ -90,9 +126,16 @@ async def chat(ctx, *, prompt):
 
 
 # Commande pour résumer un texte
-@bot.command()
+@bot.command(help="Summarize the given text.")
 async def summarize(ctx, *, text: str):
+    """
+    Summarize the given text.
+
+    Parameters:
+    text: The text to summarize (Text).
+    """
     prompt = f"Summurize : {text}"
+    await ctx.channel.send('Let me do it...')
     try:
         response = client_conn.get_chat_response(prompt)
         await ctx.send(response)
@@ -101,92 +144,32 @@ async def summarize(ctx, *, text: str):
 
 
 # Commande pour Rephrase un texte
-@bot.command()
+@bot.command(help="Rephrase the given text.")
 async def rephrase(ctx, *, text: str):
     prompt = f"Rephrase : {text}"
+    await ctx.send('Let me do it...')
     try:
         response = client_conn.get_chat_response(prompt)
         await ctx.send(response)
     except Exception as e:
         await ctx.send(f"Error: {e}")
-
 
 # Commande pour traduire un texte en français
-@bot.command()
+@bot.command(help="Translate the given text to French.")
 async def translate(ctx, *, text: str):
+    """
+    Translate the given text to French.
+
+    Parameters:
+    text: The text to translate (Text).
+    """
     prompt = f"Translate in French : {text}"
+    await ctx.send('Let me do it...')
     try:
         response = client_conn.get_chat_response(prompt)
         await ctx.send(response)
     except Exception as e:
         await ctx.send(f"Error: {e}")
-
-
-# Commande pour mentionner l'avant-dernier message contenant un mot clé
-@bot.command()
-async def mention(ctx, *, search_text: str):
-    try:
-        # Initialiser un compteur pour suivre les messages trouvés
-        found_messages = []
-        
-        # Fetch messages in the channel history
-        async for message in ctx.channel.history(limit=100):
-            if search_text in message.content and message.id != ctx.message.id:
-                found_messages.append(message)
-                
-        if len(found_messages) > 1:
-            last_message = found_messages[0]
-            await ctx.send(f"Message found: {last_message.jump_url}")
-        elif len(found_messages) == 1:
-            await ctx.send(f"No other message found containing: {search_text}")
-        else:
-            await ctx.send(f"No message found containing: {search_text}")
-    except Exception as e:
-        await ctx.send(f"Error: {e}")
-        
-import random
-
-@bot.command()
-async def tictactoe(ctx, player2: discord.Member):
-    board = [' '] * 9
-    turn = 'X'
-    game_over = False
-
-    def print_board():
-        return f"{board[0]}|{board[1]}|{board[2]}\n{board[3]}|{board[4]}|{board[5]}\n{board[6]}|{board[7]}|{board[8]}"
-
-    await ctx.send(f"Tic-Tac-Toe game started between {ctx.author.mention} and {player2.mention}.\n{print_board()}")
-
-    while not game_over:
-        def check_winner():
-            wins = [(0, 1, 2), (3, 4, 5), (6, 7, 8), (0, 3, 6), (1, 4, 7), (2, 5, 8), (0, 4, 8), (2, 4, 6)]
-            for win in wins:
-                if board[win[0]] == board[win[1]] == board[win[2]] and board[win[0]] != ' ':
-                    return board[win[0]]
-            if ' ' not in board:
-                return 'Draw'
-            return None
-
-        def check_input(msg):
-            return msg.author in [ctx.author, player2] and msg.content.isdigit() and int(msg.content) in range(9) and board[int(msg.content)] == ' '
-
-        await ctx.send(f"{turn}'s turn. Enter a number (0-8):")
-        try:
-            move = await bot.wait_for('message', check=check_input, timeout=60.0)
-            board[int(move.content)] = turn
-            winner = check_winner()
-            if winner:
-                game_over = True
-                if winner == 'Draw':
-                    await ctx.send("It's a draw!\n" + print_board())
-                else:
-                    await ctx.send(f"{winner} wins!\n" + print_board())
-            else:
-                turn = 'O' if turn == 'X' else 'X'
-                await ctx.send(print_board())
-        except TimeoutError:
-            await ctx.send("Game over due to inactivity.")
-            game_over = True
 
 # Exécuter le bot avec le jeton d'authentification
 bot.run(TOKEN)
