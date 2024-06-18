@@ -89,6 +89,61 @@ async def chat(ctx, *, prompt):
         await ctx.send(f"Error: {e}")
 
 
+# Commande pour résumer un texte
+@bot.command()
+async def summarize(ctx, *, text: str):
+    prompt = f"Summurize : {text}"
+    try:
+        response = client_conn.get_chat_response(prompt)
+        await ctx.send(response)
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+
+
+# Commande pour Rephrase un texte
+@bot.command()
+async def rephrase(ctx, *, text: str):
+    prompt = f"Rephrase : {text}"
+    try:
+        response = client_conn.get_chat_response(prompt)
+        await ctx.send(response)
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+
+
+# Commande pour traduire un texte en français
+@bot.command()
+async def translate(ctx, *, text: str):
+    prompt = f"Translate in French : {text}"
+    try:
+        response = client_conn.get_chat_response(prompt)
+        await ctx.send(response)
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+
+
+# Commande pour mentionner l'avant-dernier message contenant un mot clé
+@bot.command()
+async def mention(ctx, *, search_text: str):
+    try:
+        # Initialiser un compteur pour suivre les messages trouvés
+        found_messages = []
+        
+        # Fetch messages in the channel history
+        async for message in ctx.channel.history(limit=100):
+            if search_text in message.content and message.id != ctx.message.id:
+                found_messages.append(message)
+                
+        if len(found_messages) > 1:
+            last_message = found_messages[0]
+            await ctx.send(f"Message found: {last_message.jump_url}")
+        elif len(found_messages) == 1:
+            await ctx.send(f"No other message found containing: {search_text}")
+        else:
+            await ctx.send(f"No message found containing: {search_text}")
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+        
 import random
 
 @bot.command()
