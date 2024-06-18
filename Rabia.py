@@ -68,9 +68,9 @@ async def search_theme(ctx, *, theme: str):
             break
         if message.content.startswith(ctx.prefix + ctx.invoked_with):
             continue
-        prompt = f"Answer only with word 'yes' or 'no'. Does this message talk about {theme}?\n\nMessage: {message.content}."
+        prompt = f"Does this message talk about {theme}?\n\nMessage: {message.content}."
         try:
-            response = client_conn.get_chat_response(prompt)
+            response = client_conn.get_chat_response(prompt, temp=0.0, context='search')
             if "yes" in response.lower():
                 await thread.send(f"Found message: {message.content} (Link: {message.jump_url})")
         except Exception as e:
