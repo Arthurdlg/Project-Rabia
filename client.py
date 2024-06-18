@@ -1,4 +1,3 @@
-# Example: reuse your existing OpenAI setup
 from openai import OpenAI
 
 # Point to the local server
